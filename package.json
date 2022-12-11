@@ -1,0 +1,22 @@
+{
+  "name": "nodejs-masterclass-assignments",
+  "version": "1.0.0",
+  "description": "Assignments for NodeJS masterclass by Pirple.com",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MANOJPATRA1991/NODEJS-MASTERCLASS-ASSIGNMENTS.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MANOJPATRA1991/NODEJS-MASTERCLASS-ASSIGNMENTS/issues"
+  },
+  "homepage": "https://github.com/MANOJPATRA1991/NODEJS-MASTERCLASS-ASSIGNMENTS#readme",
+  "devDependencies": {
+    "@types/node": "^18.11.11"
+  }
+}
