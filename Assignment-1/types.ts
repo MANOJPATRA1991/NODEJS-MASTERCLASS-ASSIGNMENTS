@@ -46,8 +46,8 @@ export interface IDataError {
   message?: string;
 }
 
-export interface IRequest<T> {
-  query: ParsedUrlQuery;
+export interface IRequest<T, Q = {}> {
+  query: Q;
   path: string;
   headers: IncomingHttpHeaders;
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';

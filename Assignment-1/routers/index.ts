@@ -1,12 +1,14 @@
 import { hello } from "./hello";
 import { notFound } from "./notFound";
-import { user } from "./user";
+import { users } from "./user";
+import { tokens } from "./tokens";
 
 // Define the request router
 export const router = {
   hello,
   notFound,
-  user,
+  users,
+  tokens,
 };
 
 type RouterKeys = keyof typeof router;

@@ -10,13 +10,6 @@ import config from "./config";
 import { httpsServerOptions } from "./constants";
 import { unifiedServer } from "./server";
 
-import * as _data from "./lib/data";
-
-_data
-  .create("test", "newFile", { foo: "bar" })
-  .then(() => console.log("File created"))
-  .catch((err) => console.log("This was the error", err));
-
 // Instantiate HTTP server
 const httpServer = http.createServer(unifiedServer);
 
