@@ -34,15 +34,24 @@ export interface IUser {
   tosAgreement: boolean;
 }
 
-export enum DataErrors {
+export interface IToken {
+  phone: string;
+  id: string;
+  expires: number;
+}
+
+export enum Errors {
   READ_ERROR = "READ",
   WRITE_ERROR = "WRITE",
   UPDATE_ERROR = "UPDATE",
   DELETE_ERROR = "DELETE",
+  TOKEN_EXPIRED_ERROR = "TOKEN_EXPIRED",
+  PASSWORD_MISMATCH_ERROR = "PASSWORD_MISMATCH",
+  INVALID_TOKEN_ERROR = "INVALID_TOKEN",
 }
 
-export interface IDataError {
-  code: DataErrors;
+export interface IError {
+  code: Errors;
   message?: string;
 }
 

@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import util from "util";
-import { DataErrors } from "../types";
+import { Errors } from "../types";
 import { parseJsonToObject } from "./helpers";
 
 export const baseDir = path.join(__dirname, "../../Assignment-1/.data");
@@ -9,7 +9,7 @@ export const baseDir = path.join(__dirname, "../../Assignment-1/.data");
 const openFile = util.promisify(fs.open);
 const writeFile = util.promisify(fs.writeFile);
 const readFile = util.promisify(fs.readFile);
-const truncateFile = util.promisify(fs.truncate);
+const truncateFile = util.promisify(fs.ftruncate);
 const closeFile = util.promisify(fs.close);
 const unlinkFile = util.promisify(fs.unlink);
 
@@ -30,9 +30,10 @@ export const create = async (dir: string, file: string, data: any) => {
     const stringData = JSON.stringify(data);
     error = "write";
     await writeFile(fileDescriptor, stringData);
+    return data;
   } catch (e) {
     throw {
-      code: DataErrors.WRITE_ERROR,
+      code: Errors.WRITE_ERROR,
       message: getError(error),
     };
   }
@@ -44,7 +45,7 @@ export const read = async <T>(dir: string, file: string): Promise<T> => {
     return parseJsonToObject(data);
   } catch (err) {
     throw {
-      code: DataErrors.READ_ERROR,
+      code: Errors.READ_ERROR,
     };
   }
 };
@@ -76,7 +77,7 @@ export const update = async (dir: string, file: string, data: any) => {
     await closeFile(fileDescriptor);
   } catch (e) {
     throw {
-      code: DataErrors.UPDATE_ERROR,
+      code: Errors.UPDATE_ERROR,
       message: getError(error),
     };
   }
@@ -88,7 +89,7 @@ export const remove = async (dir: string, file: string) => {
     await unlinkFile(`${baseDir}/${dir}/${file}.json`);
   } catch (e) {
     throw {
-      code: DataErrors.DELETE_ERROR,
+      code: Errors.DELETE_ERROR,
       message: "Error deleting file!!",
     };
   }

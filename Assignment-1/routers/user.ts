@@ -1,20 +1,14 @@
 import { constants } from "http2";
-import {
-  DataErrors,
-  IDataError,
-  IRequest,
-  IResult,
-  IUser,
-  Request,
-} from "../types";
+import { Errors, IRequest, IResult, IUser } from "../types";
 
 import * as _data from "../lib/data";
 import { withUserValidator } from "../models/user";
+import { verifyToken } from "./tokens";
 
 const handler: any = {};
 
 handler.get = (
-  { query }: IRequest<IUser, { phone: string }>,
+  { query, headers }: IRequest<IUser, { phone: string }>,
   callback: (result: IResult) => void
 ) => {
   const validQuery = withUserValidator({
@@ -34,16 +28,28 @@ handler.get = (
     return;
   }
 
-  _data
-    .read<IUser>("users", validQuery.phone)
+  const { token = "" } = headers;
+  verifyToken(token as string, validQuery.phone)
+    .then(() => {
+      return _data.read<IUser>("users", validQuery.phone!);
+    })
     .then(({ password, ...data }) => {
       callback({
         statusCode: constants.HTTP_STATUS_OK,
         data,
       });
     })
-    .catch((_) => {
-      callback({ statusCode: constants.HTTP_STATUS_NOT_FOUND });
+    .catch((e) => {
+      switch (e.code) {
+        case Errors.READ_ERROR:
+          callback({ statusCode: constants.HTTP_STATUS_NOT_FOUND });
+          break;
+        case Errors.INVALID_TOKEN_ERROR:
+          callback({
+            statusCode: constants.HTTP_STATUS_FORBIDDEN,
+            message: e.message,
+          });
+      }
     });
 };
 
@@ -89,7 +95,14 @@ handler.post = (
 };
 
 handler.put = (
-  { query, payload }: IRequest<IUser, { phone: string }>,
+  {
+    query,
+    payload,
+    headers,
+  }: IRequest<
+    Partial<Pick<IUser, "firstName" | "lastName" | "password">>,
+    { phone: string }
+  >,
   callback: (result: IResult) => void
 ) => {
   const validQuery = withUserValidator({
@@ -109,8 +122,12 @@ handler.put = (
     return;
   }
 
-  _data
-    .read<IUser>("users", validQuery.phone)
+  const { token = "" } = headers;
+
+  verifyToken(token as string, validQuery.phone!)
+    .then(() => {
+      return _data.read<IUser>("users", validQuery.phone!);
+    })
     .then((user) => {
       const userProxy = withUserValidator({ user });
       if (payload.firstName) userProxy.firstName = payload.firstName;
@@ -119,25 +136,30 @@ handler.put = (
       return _data.update("users", user.phone, user);
     })
     .then(() => callback({ statusCode: constants.HTTP_STATUS_OK }))
-    .catch((e: IDataError) => {
+    .catch((e) => {
       switch (e.code) {
-        case DataErrors.UPDATE_ERROR:
+        case Errors.UPDATE_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_INTERNAL_SERVER_ERROR,
             message: "Could not update the user.",
           });
           break;
-        case DataErrors.READ_ERROR:
+        case Errors.READ_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_BAD_REQUEST,
             message: "Specified user with does not exist.",
+          });
+        case Errors.INVALID_TOKEN_ERROR:
+          callback({
+            statusCode: constants.HTTP_STATUS_FORBIDDEN,
+            message: e.message,
           });
       }
     });
 };
 
 handler.delete = (
-  { query }: IRequest<IUser, { phone: string }>,
+  { query, headers }: IRequest<IUser, { phone: string }>,
   callback: (result: IResult) => void
 ) => {
   const validQuery = withUserValidator({
@@ -157,24 +179,34 @@ handler.delete = (
     return;
   }
 
-  _data
-    .read<IUser>("users", validQuery.phone)
+  const { token = "" } = headers;
+
+  verifyToken(token as string, validQuery.phone)
+    .then(() => {
+      return _data.read<IUser>("users", validQuery.phone!);
+    })
     .then((user) => _data.remove("users", user.phone))
     .then(() => {
       callback({ statusCode: constants.HTTP_STATUS_OK });
     })
-    .catch((e: IDataError) => {
+    .catch((e) => {
       switch (e.code) {
-        case DataErrors.READ_ERROR:
+        case Errors.READ_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_BAD_REQUEST,
             message: "Could not find the specified user.",
           });
           break;
-        case DataErrors.DELETE_ERROR:
+        case Errors.DELETE_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_INTERNAL_SERVER_ERROR,
             message: "Could not delete the specified user",
+          });
+          break;
+        case Errors.INVALID_TOKEN_ERROR:
+          callback({
+            statusCode: constants.HTTP_STATUS_FORBIDDEN,
+            message: e.message,
           });
       }
     });
