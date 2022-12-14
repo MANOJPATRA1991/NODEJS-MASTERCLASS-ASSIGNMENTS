@@ -10,7 +10,7 @@ export const withUserValidator = ({
 }) => {
   return new Proxy(user, {
     set: (obj, prop: keyof IUser, value: any) => {
-      const error = errors[prop] ? new Error(errors[prop]) : '';
+      const error = errors[prop] ? new Error(errors[prop]) : null;
       switch (prop) {
         case "firstName":
         case "lastName":
@@ -20,6 +20,7 @@ export const withUserValidator = ({
           if (!value.trim().length) {
             throw error ?? new RangeError(`${prop} is invalid`);
           }
+          break;
         case "phone":
           if (typeof value !== "string") {
             throw error ?? new TypeError(`${prop} is not a string`);
@@ -27,6 +28,7 @@ export const withUserValidator = ({
           if (value.trim().length !== 10) {
             throw error ?? new RangeError(`${prop} is invalid`);
           }
+          break;
         case "password":
           if (typeof value !== "string") {
             throw error ?? new TypeError(`${prop} is not a string`);

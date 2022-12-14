@@ -9,7 +9,7 @@ export const withTokenValidator = ({
 }) => {
   return new Proxy(token, {
     set: (obj, prop: keyof IToken & "extend", value: any) => {
-      const error = errors[prop] ? new Error(errors[prop]) : '';
+      const error = errors[prop] ? new Error(errors[prop]) : null;
       switch (prop) {
         case "id":
           if (typeof value !== "string") {

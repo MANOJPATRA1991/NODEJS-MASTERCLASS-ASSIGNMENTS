@@ -11,6 +11,7 @@ export interface IEnvironment {
   httpsPort: number;
   envName: Environments;
   hashingSecret: string;
+  maxChecks: number;
 }
 
 export type Response = http.ServerResponse<http.IncomingMessage> & {
@@ -31,6 +32,7 @@ export interface IUser {
   phone: string;
   password: string;
   tosAgreement: boolean;
+  checks?: string[];
 }
 
 export interface IToken {
@@ -38,6 +40,16 @@ export interface IToken {
   id: string;
   expires: number;
 }
+
+export interface ICheck {
+  id: string;
+  userPhone: string;
+  protocol: 'http' | 'https';
+  url: string;
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  successCodes: number[];
+  timeout: number;
+};
 
 export enum Errors {
   READ_ERROR = "READ",
@@ -47,6 +59,7 @@ export enum Errors {
   TOKEN_EXPIRED_ERROR = "TOKEN_EXPIRED",
   PASSWORD_MISMATCH_ERROR = "PASSWORD_MISMATCH",
   INVALID_TOKEN_ERROR = "INVALID_TOKEN",
+  MAX_CHECKS_EXCEEDED = "MAX_CHECKS_EXCEEDED",
 }
 
 export interface IError {

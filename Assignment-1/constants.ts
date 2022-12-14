@@ -8,14 +8,16 @@ export const environments: { [x in Environments]: IEnvironment } = {
         httpPort: 3000,
         httpsPort: 3001,
         envName: Environments.STAGING,
-        hashingSecret: 'thisIsASecret'
+        hashingSecret: 'thisIsASecret',
+        maxChecks: 5,
     },
     // Production environment
     [Environments.PRODUCTION]: {
         httpPort: 5000,
         httpsPort: 5001,
         envName: Environments.PRODUCTION,
-        hashingSecret: 'thisIsAlsoASecret'
+        hashingSecret: 'thisIsAlsoASecret',
+        maxChecks: 5,
     },
 };
 
