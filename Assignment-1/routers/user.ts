@@ -1,8 +1,8 @@
 import { constants } from "http2";
-import { Errors, IRequest, IResult, IUser } from "../types";
+import { Errors, IError, IRequest, IResult, IUser } from "../types";
 
-import * as _data from "../lib/data";
-import { withUserValidator } from "../models/user";
+import * as db from "../lib/data";
+import { withUserValidator } from "../validators/user";
 import { verifyToken } from "./tokens";
 
 const handler: any = {};
@@ -11,15 +11,15 @@ handler.get = (
   { query, headers }: IRequest<IUser, { phone: string }>,
   callback: (result: IResult) => void
 ) => {
-  const validQuery = withUserValidator({
+  const validator = withUserValidator({
     errors: {
       phone:
-        "[phone]: is a required field and should have a length of 10 characters",
+        "[phone] is a required field and should have a length of 10 characters",
     },
   });
 
   try {
-    validQuery.phone = query.phone;
+    validator.phone = query.phone;
   } catch (e) {
     callback({
       statusCode: constants.HTTP_STATUS_BAD_REQUEST,
@@ -29,9 +29,9 @@ handler.get = (
   }
 
   const { token = "" } = headers;
-  verifyToken(token as string, validQuery.phone)
+  verifyToken(token as string, validator.phone)
     .then(() => {
-      return _data.read<IUser>("users", validQuery.phone!);
+      return db.read<IUser>("users", validator.phone!);
     })
     .then(({ password, ...data }) => {
       callback({
@@ -39,7 +39,7 @@ handler.get = (
         data,
       });
     })
-    .catch((e) => {
+    .catch((e: IError) => {
       switch (e.code) {
         case Errors.READ_ERROR:
           callback({ statusCode: constants.HTTP_STATUS_NOT_FOUND });
@@ -57,13 +57,13 @@ handler.post = (
   { payload }: IRequest<IUser>,
   callback: (result: IResult) => void
 ) => {
-  const userProxy = withUserValidator({ user: payload });
+  const validator = withUserValidator({ user: payload });
   try {
-    userProxy.firstName = payload.firstName;
-    userProxy.lastName = payload.lastName;
-    userProxy.phone = payload.phone;
-    userProxy.password = payload.password;
-    userProxy.tosAgreement = payload.tosAgreement;
+    validator.firstName = payload.firstName;
+    validator.lastName = payload.lastName;
+    validator.phone = payload.phone;
+    validator.password = payload.password;
+    validator.tosAgreement = payload.tosAgreement;
   } catch (e) {
     callback({
       statusCode: constants.HTTP_STATUS_BAD_REQUEST,
@@ -72,16 +72,15 @@ handler.post = (
     return;
   }
 
-  _data
-    .read<IUser>("users", userProxy.phone!)
-    .then(() =>
+  db.read<IUser>("users", validator.phone!)
+    .then(() => {
       callback({
         statusCode: constants.HTTP_STATUS_BAD_REQUEST,
         message: "A user with that phone number already exists",
-      })
-    )
+      });
+    })
     .catch((_) => {
-      return _data.create("users", userProxy.phone!, payload);
+      return db.create("users", validator.phone!, payload);
     })
     .then(() => {
       callback({ statusCode: constants.HTTP_STATUS_OK });
@@ -105,7 +104,7 @@ handler.put = (
   >,
   callback: (result: IResult) => void
 ) => {
-  const validQuery = withUserValidator({
+  const validator = withUserValidator({
     errors: {
       phone:
         "[phone]: is a required field and should have a length of 10 characters",
@@ -113,7 +112,7 @@ handler.put = (
   });
 
   try {
-    validQuery.phone = query.phone;
+    validator.phone = query.phone;
   } catch (e) {
     callback({
       statusCode: constants.HTTP_STATUS_BAD_REQUEST,
@@ -124,19 +123,19 @@ handler.put = (
 
   const { token = "" } = headers;
 
-  verifyToken(token as string, validQuery.phone!)
+  verifyToken(token as string, validator.phone!)
     .then(() => {
-      return _data.read<IUser>("users", validQuery.phone!);
+      return db.read<IUser>("users", validator.phone!);
     })
     .then((user) => {
       const userProxy = withUserValidator({ user });
       if (payload.firstName) userProxy.firstName = payload.firstName;
       if (payload.lastName) userProxy.lastName = payload.lastName;
       if (payload.password) userProxy.password = payload.password;
-      return _data.update("users", user.phone, user);
+      return db.update("users", user.phone, user);
     })
     .then(() => callback({ statusCode: constants.HTTP_STATUS_OK }))
-    .catch((e) => {
+    .catch((e: IError) => {
       switch (e.code) {
         case Errors.UPDATE_ERROR:
           callback({
@@ -154,6 +153,11 @@ handler.put = (
             statusCode: constants.HTTP_STATUS_FORBIDDEN,
             message: e.message,
           });
+        default:
+          callback({
+            statusCode: constants.HTTP_STATUS_BAD_REQUEST,
+            message: e.message,
+          });
       }
     });
 };
@@ -162,7 +166,7 @@ handler.delete = (
   { query, headers }: IRequest<IUser, { phone: string }>,
   callback: (result: IResult) => void
 ) => {
-  const validQuery = withUserValidator({
+  const validator = withUserValidator({
     errors: {
       phone:
         "[phone]: is a required field and should have a length of 10 characters",
@@ -170,7 +174,7 @@ handler.delete = (
   });
 
   try {
-    validQuery.phone = query.phone;
+    validator.phone = query.phone;
   } catch (e) {
     callback({
       statusCode: constants.HTTP_STATUS_BAD_REQUEST,
@@ -181,11 +185,13 @@ handler.delete = (
 
   const { token = "" } = headers;
 
-  verifyToken(token as string, validQuery.phone)
+  verifyToken(token as string, validator.phone)
     .then(() => {
-      return _data.read<IUser>("users", validQuery.phone!);
+      return db.read<IUser>("users", validator.phone!);
     })
-    .then((user) => _data.remove("users", user.phone))
+    .then((user) => {
+      return db.remove("users", user.phone);
+    })
     .then(() => {
       callback({ statusCode: constants.HTTP_STATUS_OK });
     })

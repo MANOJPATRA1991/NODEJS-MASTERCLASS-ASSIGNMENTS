@@ -1,6 +1,5 @@
 import http from 'http';
 import { IncomingHttpHeaders } from 'http2';
-import { ParsedUrlQuery } from 'querystring';
 
 export enum Environments {
   PRODUCTION = 'production',

@@ -13,7 +13,7 @@ const truncateFile = util.promisify(fs.ftruncate);
 const closeFile = util.promisify(fs.close);
 const unlinkFile = util.promisify(fs.unlink);
 
-export const create = async (dir: string, file: string, data: any) => {
+export const create = async <T>(dir: string, file: string, data: any): Promise<T> => {
   const getError = (type: string) => {
     return {
       open: "Could not create new file, it may already exist",
@@ -30,7 +30,7 @@ export const create = async (dir: string, file: string, data: any) => {
     const stringData = JSON.stringify(data);
     error = "write";
     await writeFile(fileDescriptor, stringData);
-    return data;
+    return data as T;
   } catch (e) {
     throw {
       code: Errors.WRITE_ERROR,
