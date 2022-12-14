@@ -190,7 +190,11 @@ handler.delete = (
       return db.read<IUser>("users", validator.phone!);
     })
     .then((user) => {
-      return db.remove("users", user.phone);
+      user.checks = Array.isArray(user.checks) ? user.checks : [];
+      return Promise.all([
+        ...user.checks.map((checkId) => db.remove("checks", checkId)),
+        db.remove("users", user.phone),
+      ]);
     })
     .then(() => {
       callback({ statusCode: constants.HTTP_STATUS_OK });
@@ -206,7 +210,7 @@ handler.delete = (
         case Errors.DELETE_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_INTERNAL_SERVER_ERROR,
-            message: "Could not delete the specified user",
+            message: "Could not perform delete successfully",
           });
           break;
         case Errors.INVALID_TOKEN_ERROR:
