@@ -1,19 +1,23 @@
-import fs from "fs";
 import path from "path";
-import util from "util";
 import { Errors } from "../types";
+import {
+  closeFile,
+  openFile,
+  readdir,
+  readFile,
+  truncateFile,
+  unlinkFile,
+  writeFile,
+} from "./file";
 import { parseJsonToObject } from "./helpers";
 
 export const baseDir = path.join(__dirname, "../../Assignment-1/.data");
 
-const openFile = util.promisify(fs.open);
-const writeFile = util.promisify(fs.writeFile);
-const readFile = util.promisify(fs.readFile);
-const truncateFile = util.promisify(fs.ftruncate);
-const closeFile = util.promisify(fs.close);
-const unlinkFile = util.promisify(fs.unlink);
-
-export const create = async <T>(dir: string, file: string, data: any): Promise<T> => {
+export const create = async <T>(
+  dir: string,
+  file: string,
+  data: any
+): Promise<T> => {
   const getError = (type: string) => {
     return {
       open: "Could not create new file, it may already exist",
@@ -91,6 +95,21 @@ export const remove = async (dir: string, file: string) => {
     throw {
       code: Errors.DELETE_ERROR,
       message: "Error deleting file!!",
+    };
+  }
+};
+
+export const list = async (dir: string) => {
+  try {
+    const data = await readdir(`${baseDir}/${dir}/`);
+    if (data && data.length > 0) {
+      return data.map((fileName) => fileName.replace(".json", ""));
+    }
+    return [];
+  } catch (e) {
+    throw {
+      code: Errors.LS_ERROR,
+      message: "Error listing files in directory!!",
     };
   }
 };
