@@ -1,7 +1,11 @@
 import url from "url";
-import { constants, IncomingHttpHeaders } from 'http2';
+import http from "http";
+import https from "https";
+import { constants } from 'http2';
 import { StringDecoder } from "string_decoder";
 import { isValidRoute, router } from "./routers";
+import config from "./config";
+import { httpsServerOptions } from "./constants";
 
 import { Response, Request, IResult } from "./types";
 import { parseJsonToObject } from "./lib/helpers";
@@ -16,7 +20,7 @@ function createResponse(res: Response, message: string, statusCode?: number) {
 }
 
 // All the server logic for both HTTP and HTTPS server
-export const unifiedServer = (req: Request, res: Response) => {
+const unifiedServer = (req: Request, res: Response) => {
   if (!req.url || !req.method) {
     router.notFound(null, ({ statusCode }: IResult) => {
       createResponse(res, `Not found`, statusCode);
@@ -54,8 +58,26 @@ export const unifiedServer = (req: Request, res: Response) => {
     };
 
     // Route the request to the handler specified in the router
-    chosenHandler(data, ({ statusCode, data, message }: IResult) => {
-      createResponse(res, data ? JSON.stringify(data) : message || '', statusCode);
+    chosenHandler(data, ({ statusCode, data, error }: IResult) => {
+      createResponse(res, data ? JSON.stringify(data) : error || '', statusCode);
     });
   });
 };
+
+// Instantiate HTTP server
+export const httpServer = http.createServer(unifiedServer);
+
+// Instantiate HTTPS server
+export const httpsServer = https.createServer(httpsServerOptions, unifiedServer);
+
+export const init = () => {
+  // Start the HTTP server
+  httpServer.listen(config.httpPort, () => {
+    console.log(`The HTTP server is running on ${config.httpPort}`);
+  });
+
+  // Start the HTTPS server
+  httpsServer.listen(config.httpsPort, () => {
+    console.log(`The HTTPS server is running on ${config.httpsPort}`);
+  });
+}
