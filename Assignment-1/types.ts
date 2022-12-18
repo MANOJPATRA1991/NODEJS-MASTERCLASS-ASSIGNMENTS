@@ -12,6 +12,11 @@ export interface IEnvironment {
   envName: Environments;
   hashingSecret: string;
   maxChecks: number;
+  twilio: {
+    fromPhone: string;
+    accountSID: string;
+    authToken: string;
+  }
 }
 
 export type Response = http.ServerResponse<http.IncomingMessage> & {
@@ -22,7 +27,7 @@ export type Request = http.IncomingMessage;
 
 export interface IResult<T = unknown> {
   statusCode: number;
-  message?: string;
+  error?: string;
   data?: T;
 }
 
@@ -49,6 +54,8 @@ export interface ICheck {
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   successCodes: number[];
   timeout: number;
+  state: 'UP' | 'DOWN';
+  lastChecked: number;
 };
 
 export enum Errors {
@@ -60,6 +67,10 @@ export enum Errors {
   PASSWORD_MISMATCH_ERROR = "PASSWORD_MISMATCH",
   INVALID_TOKEN_ERROR = "INVALID_TOKEN",
   MAX_CHECKS_EXCEEDED = "MAX_CHECKS_EXCEEDED",
+  LS_ERROR = "LS_ERROR",
+  COMPRESS_ERROR = "COMPRESS_ERROR",
+  DECOMPRESS_ERROR = "DECOMPRESS_ERROR",
+  TRUNCATE_ERROR = "TRUNCATE_ERROR",
 }
 
 export interface IError {
