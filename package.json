@@ -1,7 +1,7 @@
 {
-  "name": "nodejs-masterclass-assignments",
+  "name": "nodejs-masterclass",
   "version": "1.0.0",
-  "description": "Assignments for NodeJS masterclass by Pirple.com",
+  "description": "NodeJS masterclass",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

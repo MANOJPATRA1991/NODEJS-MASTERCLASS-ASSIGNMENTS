@@ -11,7 +11,7 @@ import {
 } from "./file";
 import { parseJsonToObject } from "./helpers";
 
-export const baseDir = path.join(__dirname, "../../Assignment-1/.data");
+export const baseDir = path.join(__dirname, "../.data");
 
 export const create = async <T>(
   dir: string,

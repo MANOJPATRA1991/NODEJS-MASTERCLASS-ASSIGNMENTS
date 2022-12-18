@@ -2,7 +2,7 @@ import path from "path";
 import { Errors } from "../types";
 import { appendFile, closeFile, gzip, openFile, readdir, readFile, truncateFile, unzip, writeFile } from "./file";
 
-export const baseDir = path.join(__dirname, "../../Assignment-1/.logs");
+export const baseDir = path.join(__dirname, "../.logs");
 
 export const append = async (file: string, json: string) => {
   const getError = (type: string) => {
