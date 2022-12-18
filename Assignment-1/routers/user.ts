@@ -23,7 +23,7 @@ handler.get = (
   } catch (e) {
     callback({
       statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-      message: (e as Error).message,
+      error: (e as Error).message,
     });
     return;
   }
@@ -47,7 +47,7 @@ handler.get = (
         case Errors.INVALID_TOKEN_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_FORBIDDEN,
-            message: e.message,
+            error: e.message,
           });
       }
     });
@@ -67,7 +67,7 @@ handler.post = (
   } catch (e) {
     callback({
       statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-      message: (e as Error).message,
+      error: (e as Error).message,
     });
     return;
   }
@@ -76,7 +76,7 @@ handler.post = (
     .then(() => {
       callback({
         statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-        message: "A user with that phone number already exists",
+        error: "A user with that phone number already exists",
       });
     })
     .catch((_) => {
@@ -88,7 +88,7 @@ handler.post = (
     .catch((e) => {
       callback({
         statusCode: constants.HTTP_STATUS_INTERNAL_SERVER_ERROR,
-        message: "Could not create the new user",
+        error: "Could not create the new user",
       });
     });
 };
@@ -116,7 +116,7 @@ handler.put = (
   } catch (e) {
     callback({
       statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-      message: (e as Error).message,
+      error: (e as Error).message,
     });
     return;
   }
@@ -140,23 +140,23 @@ handler.put = (
         case Errors.UPDATE_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_INTERNAL_SERVER_ERROR,
-            message: "Could not update the user.",
+            error: "Could not update the user.",
           });
           break;
         case Errors.READ_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-            message: "Specified user with does not exist.",
+            error: "Specified user with does not exist.",
           });
         case Errors.INVALID_TOKEN_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_FORBIDDEN,
-            message: e.message,
+            error: e.message,
           });
         default:
           callback({
             statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-            message: e.message,
+            error: e.message,
           });
       }
     });
@@ -178,7 +178,7 @@ handler.delete = (
   } catch (e) {
     callback({
       statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-      message: (e as Error).message,
+      error: (e as Error).message,
     });
     return;
   }
@@ -204,19 +204,19 @@ handler.delete = (
         case Errors.READ_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-            message: "Could not find the specified user.",
+            error: "Could not find the specified user.",
           });
           break;
         case Errors.DELETE_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_INTERNAL_SERVER_ERROR,
-            message: "Could not perform delete successfully",
+            error: "Could not perform delete successfully",
           });
           break;
         case Errors.INVALID_TOKEN_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_FORBIDDEN,
-            message: e.message,
+            error: e.message,
           });
       }
     });

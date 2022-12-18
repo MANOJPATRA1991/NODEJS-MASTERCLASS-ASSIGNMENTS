@@ -23,7 +23,7 @@ handler.post = (
   } catch (e) {
     callback({
       statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-      message: (e as Error).message,
+      error: (e as Error).message,
     });
     return;
   }
@@ -56,19 +56,19 @@ handler.post = (
         case Errors.WRITE_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_INTERNAL_SERVER_ERROR,
-            message: "Could not create the new token",
+            error: "Could not create the new token",
           });
           break;
         case Errors.READ_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-            message: "Could not find the specified user.",
+            error: "Could not find the specified user.",
           });
           break;
         case Errors.PASSWORD_MISMATCH_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-            message:
+            error:
               "Password did not match the specified user's stored password",
           });
       }
@@ -86,7 +86,7 @@ handler.get = (
   } catch (e) {
     callback({
       statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-      message: (e as Error).message,
+      error: (e as Error).message,
     });
     return;
   }
@@ -117,7 +117,7 @@ handler.put = (
   } catch (e) {
     callback({
       statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-      message: (e as Error).message,
+      error: (e as Error).message,
     });
     return;
   }
@@ -143,19 +143,19 @@ handler.put = (
         case Errors.UPDATE_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_INTERNAL_SERVER_ERROR,
-            message: "Could not update the token's expiration.",
+            error: "Could not update the token's expiration.",
           });
           break;
         case Errors.READ_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-            message: "Could not find the specified token.",
+            error: "Could not find the specified token.",
           });
           break;
         case Errors.TOKEN_EXPIRED_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-            message: "The token has already expired, and cannot be extended.",
+            error: "The token has already expired, and cannot be extended.",
           });
       }
     });
@@ -172,7 +172,7 @@ handler.delete = (
   } catch (e) {
     callback({
       statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-      message: (e as Error).message,
+      error: (e as Error).message,
     });
     return;
   }
@@ -191,13 +191,13 @@ handler.delete = (
         case Errors.DELETE_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_INTERNAL_SERVER_ERROR,
-            message: "Could not delete the specified token",
+            error: "Could not delete the specified token",
           });
           break;
         case Errors.READ_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-            message: "Could not find the specified token.",
+            error: "Could not find the specified token.",
           });
       }
     });

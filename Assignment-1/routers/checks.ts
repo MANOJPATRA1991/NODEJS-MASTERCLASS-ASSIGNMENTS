@@ -30,7 +30,7 @@ handler.post = (
   } catch (e) {
     callback({
       statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-      message: (e as Error).message,
+      error: (e as Error).message,
     });
     return;
   }
@@ -53,6 +53,8 @@ handler.post = (
           method: validator.method!,
           successCodes: validator.successCodes!,
           timeout: validator.timeout!,
+          state: "DOWN",
+          lastChecked: 0,
         };
 
         return Promise.all([
@@ -85,19 +87,19 @@ handler.post = (
         case Errors.WRITE_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_INTERNAL_SERVER_ERROR,
-            message: "Could not create the new check",
+            error: "Could not create the new check",
           });
           break;
         case Errors.UPDATE_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_INTERNAL_SERVER_ERROR,
-            message: "Could not update the user with the new check",
+            error: "Could not update the user with the new check",
           });
           break;
         case Errors.MAX_CHECKS_EXCEEDED:
           callback({
             statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-            message: `The user already has the maximum number of checks: ${config.maxChecks}`,
+            error: `The user already has the maximum number of checks: ${config.maxChecks}`,
           });
       }
     });
@@ -118,7 +120,7 @@ handler.get = (
   } catch (e) {
     callback({
       statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-      message: (e as Error).message,
+      error: (e as Error).message,
     });
     return;
   }
@@ -147,7 +149,7 @@ handler.get = (
         case Errors.INVALID_TOKEN_ERROR:
           callback({
             statusCode: constants.HTTP_STATUS_FORBIDDEN,
-            message: e.message,
+            error: e.message,
           });
       }
     });
@@ -167,7 +169,7 @@ handler.put = (
   } catch (e) {
     callback({
       statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-      message: (e as Error).message,
+      error: (e as Error).message,
     });
     return;
   }
@@ -181,53 +183,53 @@ handler.put = (
       validator.timeout
     ) {
       db.read<ICheck>("checks", payload.id)
-      .then((check) => {
-        const { token = "" } = headers;
-        return Promise.all([
-          verifyToken(token as string, check.userPhone),
-          check,
-        ]);
-      })
-      .then(([ , check ]) => {
-        check.protocol = validator.protocol || check.protocol;
-        check.url = validator.url || check.url;
-        check.method = validator.method || check.method;
-        check.successCodes = validator.successCodes || check.successCodes;
-        check.timeout = validator.timeout || check.timeout;
+        .then((check) => {
+          const { token = "" } = headers;
+          return Promise.all([
+            verifyToken(token as string, check.userPhone),
+            check,
+          ]);
+        })
+        .then(([, check]) => {
+          check.protocol = validator.protocol || check.protocol;
+          check.url = validator.url || check.url;
+          check.method = validator.method || check.method;
+          check.successCodes = validator.successCodes || check.successCodes;
+          check.timeout = validator.timeout || check.timeout;
 
-        return db.update("checks", check.id, check);
-      })
-      .then(() => {
-        callback({
-          statusCode: constants.HTTP_STATUS_OK,
+          return db.update("checks", check.id, check);
+        })
+        .then(() => {
+          callback({
+            statusCode: constants.HTTP_STATUS_OK,
+          });
+        })
+        .catch((e: IError) => {
+          switch (e.code) {
+            case Errors.UPDATE_ERROR:
+              callback({
+                statusCode: constants.HTTP_STATUS_INTERNAL_SERVER_ERROR,
+                error: "Could not update the check",
+              });
+              break;
+            case Errors.READ_ERROR:
+              callback({
+                statusCode: constants.HTTP_STATUS_BAD_REQUEST,
+                error: "Check ID does not exist",
+              });
+              break;
+            case Errors.INVALID_TOKEN_ERROR:
+              callback({
+                statusCode: constants.HTTP_STATUS_FORBIDDEN,
+                error: e.message,
+              });
+          }
         });
-      })
-      .catch((e: IError) => {
-        switch(e.code) {
-          case Errors.UPDATE_ERROR:
-            callback({
-              statusCode: constants.HTTP_STATUS_INTERNAL_SERVER_ERROR,
-              message: "Could not update the check",
-            });
-            break;
-          case Errors.READ_ERROR:
-            callback({
-              statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-              message: "Check ID does not exist",
-            });
-            break;
-          case Errors.INVALID_TOKEN_ERROR:
-            callback({
-              statusCode: constants.HTTP_STATUS_FORBIDDEN,
-              message: e.message,
-            });
-        }
-      });
     }
   } else {
     callback({
       statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-      message: "Missing fields to update",
+      error: "Missing fields to update",
     });
   }
 };
@@ -243,7 +245,7 @@ handler.delete = (
   } catch (e) {
     callback({
       statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-      message: (e as Error).message,
+      error: (e as Error).message,
     });
     return;
   }
@@ -251,61 +253,58 @@ handler.delete = (
   const { token = "" } = headers;
 
   db.read<ICheck>("checks", validator.id)
-  .then((check) => {
-    return Promise.all([
-      verifyToken(token as string, check.userPhone),
-      { id: check.id, phone: check.userPhone },
-    ]);
-  })
-  .then(([ , { id, phone } ]) => {
-    return Promise.all([
-      db.remove("checks", id),
-      phone
-    ]);
-  })
-  .then(([ , phone ]) => {
-    return db.read<IUser>("users", phone);
-  })
-  .then((user) => {
-    user.checks = Array.isArray(user.checks) ? user.checks : [];
-    const checkIndex = user.checks.indexOf(validator.id!);
-    if (checkIndex > -1) {
-      user.checks.splice(checkIndex, 1);
-    }
-    return db.update("users", user.phone, user);
-  })
-  .then(() => {
-    callback({
-      statusCode: constants.HTTP_STATUS_OK,
+    .then((check) => {
+      return Promise.all([
+        verifyToken(token as string, check.userPhone),
+        { id: check.id, phone: check.userPhone },
+      ]);
+    })
+    .then(([, { id, phone }]) => {
+      return Promise.all([db.remove("checks", id), phone]);
+    })
+    .then(([, phone]) => {
+      return db.read<IUser>("users", phone);
+    })
+    .then((user) => {
+      user.checks = Array.isArray(user.checks) ? user.checks : [];
+      const checkIndex = user.checks.indexOf(validator.id!);
+      if (checkIndex > -1) {
+        user.checks.splice(checkIndex, 1);
+      }
+      return db.update("users", user.phone, user);
+    })
+    .then(() => {
+      callback({
+        statusCode: constants.HTTP_STATUS_OK,
+      });
+    })
+    .catch((e) => {
+      switch (e.code) {
+        case Errors.UPDATE_ERROR:
+          callback({
+            statusCode: constants.HTTP_STATUS_INTERNAL_SERVER_ERROR,
+            error: "Could not update the user",
+          });
+          break;
+        case Errors.READ_ERROR:
+          callback({
+            statusCode: constants.HTTP_STATUS_BAD_REQUEST,
+            error: "Could not read the specified data",
+          });
+          break;
+        case Errors.DELETE_ERROR:
+          callback({
+            statusCode: constants.HTTP_STATUS_INTERNAL_SERVER_ERROR,
+            error: "Could not delete the specified data",
+          });
+          break;
+        case Errors.INVALID_TOKEN_ERROR:
+          callback({
+            statusCode: constants.HTTP_STATUS_FORBIDDEN,
+            error: e.message,
+          });
+      }
     });
-  })
-  .catch((e) => {
-    switch (e.code) {
-      case Errors.UPDATE_ERROR:
-        callback({
-          statusCode: constants.HTTP_STATUS_INTERNAL_SERVER_ERROR,
-          message: "Could not update the user",
-        });
-        break;
-      case Errors.READ_ERROR:
-        callback({
-          statusCode: constants.HTTP_STATUS_BAD_REQUEST,
-          message: "Could not read the specified data",
-        });
-        break;
-      case Errors.DELETE_ERROR:
-        callback({
-          statusCode: constants.HTTP_STATUS_INTERNAL_SERVER_ERROR,
-          message: "Could not delete the specified data",
-        });
-        break;
-      case Errors.INVALID_TOKEN_ERROR:
-        callback({
-          statusCode: constants.HTTP_STATUS_FORBIDDEN,
-          message: e.message,
-        });
-    }
-  });
 };
 
 export const checks = (data: any, callback: (result: IResult) => void) => {
