@@ -1,7 +1,7 @@
-import url from "url";
+import urlLib from "url";
 import http from "http";
 import https from "https";
-import { constants } from 'http2';
+import { constants } from "http2";
 import { StringDecoder } from "string_decoder";
 import { isValidRoute, router } from "./routers";
 import config from "./config";
@@ -10,18 +10,21 @@ import { httpsServerOptions } from "./constants";
 import { Response, Request, IResult } from "./types";
 import { parseJsonToObject } from "./lib/helpers";
 
-function createResponse(res: Response, message: string, statusCode?: number) {
-  statusCode = statusCode || constants.HTTP_STATUS_NOT_FOUND;
-
+const createResponse = (
+  res: Response,
+  message: string,
+  statusCode: number = constants.HTTP_STATUS_NOT_FOUND
+) => {
   // Return the response
   res.setHeader(constants.HTTP2_HEADER_CONTENT_TYPE, "application/json");
   res.writeHead(statusCode);
   res.end(message);
-}
+};
 
 // All the server logic for both HTTP and HTTPS server
-const unifiedServer = (req: Request, res: Response) => {
-  if (!req.url || !req.method) {
+const requestListener = (req: Request, res: Response) => {
+  const { url, method, headers } = req;
+  if (!url || !method) {
     router.notFound(null, ({ statusCode }: IResult) => {
       createResponse(res, `Not found`, statusCode);
     });
@@ -29,15 +32,10 @@ const unifiedServer = (req: Request, res: Response) => {
   }
 
   // Parse the url
-  const { pathname, query } = url.parse(req.url, true);
-
+  const { pathname, query } = urlLib.parse(url, true);
   // Get the path
-  const trimmedPath = (pathname ?? "").replace(/^\/+|\/+$/g, "");
-  
-  const chosenHandler = isValidRoute(trimmedPath)
-    ? router[trimmedPath]
-    : router.notFound;
-
+  const path = (pathname ?? "").replace(/^\/+|\/+$/g, "");
+  const routeHandler = router[isValidRoute(path) ? path : "notFound"];
   const decoder = new StringDecoder("utf-8");
 
   let buffer = "";
@@ -49,28 +47,32 @@ const unifiedServer = (req: Request, res: Response) => {
   req.on("end", () => {
     buffer += decoder.end();
 
-    const data = {
+    const requestData = {
       query,
-      path: trimmedPath,
-      headers: req.headers,
-      method: req.method,
+      path,
+      headers,
+      method,
       payload: parseJsonToObject(buffer),
     };
 
     // Route the request to the handler specified in the router
-    chosenHandler(data, ({ statusCode, data, error }: IResult) => {
-      createResponse(res, data ? JSON.stringify(data) : error || '', statusCode);
+    routeHandler(requestData, ({ statusCode, data, error }: IResult) => {
+      createResponse(
+        res,
+        data ? JSON.stringify(data) : error || "",
+        statusCode
+      );
     });
   });
 };
 
-// Instantiate HTTP server
-export const httpServer = http.createServer(unifiedServer);
-
-// Instantiate HTTPS server
-export const httpsServer = https.createServer(httpsServerOptions, unifiedServer);
-
 export const init = () => {
+  // Instantiate HTTP server
+  const httpServer = http.createServer(requestListener);
+
+  // Instantiate HTTPS server
+  const httpsServer = https.createServer(httpsServerOptions, requestListener);
+
   // Start the HTTP server
   httpServer.listen(config.httpPort, () => {
     console.log(`The HTTP server is running on ${config.httpPort}`);
@@ -80,4 +82,4 @@ export const init = () => {
   httpsServer.listen(config.httpsPort, () => {
     console.log(`The HTTPS server is running on ${config.httpsPort}`);
   });
-}
+};

@@ -1,13 +1,13 @@
-import { ICheck, IToken } from "../types";
+import { ICheck } from "../types";
 
 export const withCheckValidator = ({
-  check = {},
+  data = {},
   errors = {},
 }: {
-  check?: Partial<ICheck>;
+  data?: Partial<ICheck>;
   errors?: Partial<Record<keyof ICheck, string>>;
 }) => {
-  return new Proxy(check, {
+  return new Proxy(data, {
     set: (obj, prop: keyof ICheck & "extend", value: any) => {
       const error = errors[prop] ? new Error(errors[prop]) : null;
       switch (prop) {

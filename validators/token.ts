@@ -1,13 +1,13 @@
 import { IToken } from "../types";
 
 export const withTokenValidator = ({
-  token = {},
+  data = {},
   errors = {},
 }: {
-  token?: Partial<IToken & { extend: boolean }>;
+  data?: Partial<IToken & { extend: boolean }>;
   errors?: Partial<Record<keyof IToken, string>>;
 }) => {
-  return new Proxy(token, {
+  return new Proxy(data, {
     set: (obj, prop: keyof IToken & "extend", value: any) => {
       const error = errors[prop] ? new Error(errors[prop]) : null;
       switch (prop) {

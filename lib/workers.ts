@@ -3,54 +3,43 @@ import http from "http";
 import https from "https";
 import * as db from "./data";
 import * as logLib from "./logs";
-import { ICheck, IError, IResult } from "../types";
+import { ICheck, IError, IResult, ProcessState } from "../types";
 import { withCheckValidator } from "../validators/check";
 import { sendSMS } from "./twilio";
 
-function log(
-  check: ICheck,
-  outcome: IResult,
-  state: "UP" | "DOWN",
-  alert: boolean,
-  time: number
-) {
-  const json = JSON.stringify({
-    check,
-    outcome,
-    state,
-    alert,
-    time,
-  });
-
-  const fileName = check.id;
-
-  logLib
-    .append(fileName, json)
-    .then(() => console.log("Logging to file succeded"))
-    .catch(() => console.log("Logging to file failed"));
-}
-
-function alertUserToStatusChange(check: ICheck) {
+const alertUserToStatusChange = (check: ICheck) => {
   const message = `Your check for ${check.method} ${check.protocol}://${check.url} is currently ${check.state}`;
   sendSMS(check.userPhone, message)
     .then(() => console.log("Success! User is alerted"))
     .catch(() => console.log("Couldn't send user alert!"));
-}
+};
 
-function processCheckOutcome(check: ICheck, checkOutcome: IResult) {
+const processCheckOutcome = (check: ICheck, checkOutcome: IResult) => {
   const state =
     !checkOutcome.error &&
     checkOutcome.statusCode &&
     check.successCodes.includes(checkOutcome.statusCode)
-      ? "UP"
-      : "DOWN";
+      ? ProcessState.UP
+      : ProcessState.DOWN;
 
   const alert = Boolean(check.lastChecked && state !== check.state);
 
   check.state = state;
   check.lastChecked = Date.now();
 
-  log(check, checkOutcome, state, alert, Date.now());
+  logLib
+    .append(
+      check.id,
+      JSON.stringify({
+        check,
+        checkOutcome,
+        state,
+        alert,
+        time: Date.now(),
+      })
+    )
+    .then(() => console.log("Logging to file succeeded"))
+    .catch(() => console.log("Logging to file failed"));
 
   db.update("checks", check.id, check)
     .then(() => {
@@ -63,9 +52,9 @@ function processCheckOutcome(check: ICheck, checkOutcome: IResult) {
     .catch(() => {
       console.log("Error trying to save updates to one of the checks");
     });
-}
+};
 
-function performCheck(check: ICheck) {
+const performCheck = (check: ICheck) => {
   const { protocol, url, method, timeout } = check;
   let checkOutcome: IResult | any = {};
 
@@ -79,25 +68,16 @@ function performCheck(check: ICheck) {
     timeout: timeout * 1000,
   };
 
-  let outcomeSent = false;
-
   const moduleProtocol = protocol === "http" ? http : https;
 
   const request = moduleProtocol.request(requestOptions, (res) => {
     checkOutcome.statusCode = res.statusCode as number;
-
-    if (!outcomeSent) {
-      processCheckOutcome(check, checkOutcome);
-      outcomeSent = true;
-    }
+    processCheckOutcome(check, checkOutcome);
   });
 
   const errorHandler = (e: Error) => {
     checkOutcome.error = e.message;
-    if (!outcomeSent) {
-      processCheckOutcome(check, checkOutcome);
-      outcomeSent = true;
-    }
+    processCheckOutcome(check, checkOutcome);
   };
 
   request.on("error", (e) => errorHandler(e));
@@ -105,7 +85,7 @@ function performCheck(check: ICheck) {
   request.on("timeout", () => errorHandler(new Error("Timeout")));
 
   request.end();
-}
+};
 
 function validateCheckData(check: ICheck) {
   const validator = withCheckValidator({});
@@ -159,7 +139,8 @@ function loop() {
 }
 
 function rotateLogs() {
-  let promises: Promise<{ logId: string; newFileId: string; } | undefined>[] = [];
+  let promises: Promise<{ logId: string; newFileId: string } | undefined>[] =
+    [];
   logLib
     .list(false)
     .then((logs) => {
@@ -175,7 +156,7 @@ function rotateLogs() {
       return Promise.allSettled(promises);
     })
     .then((results: PromiseSettledResult<any>[]) => {
-      const promises: Promise<{ logId: string; }>[] = [];
+      const promises: Promise<{ logId: string }>[] = [];
       results.forEach((result) => {
         if (result.status === "rejected") {
           console.log("Error compressing one of the log files", result.reason);

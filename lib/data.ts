@@ -1,5 +1,5 @@
 import path from "path";
-import { Errors } from "../types";
+import { Errors, FileSystemFlags } from "../types";
 import {
   closeFile,
   openFile,
@@ -18,27 +18,25 @@ export const create = async <T>(
   file: string,
   data: any
 ): Promise<T> => {
-  const getError = (type: string) => {
-    return {
-      open: "Could not create new file, it may already exist",
-      write: "Error closing new file",
-    }[type];
+  const errors = {
+    [Errors.READ_ERROR]: "Could not create new file, it may already exist!!",
+    [Errors.WRITE_ERROR]: "Error closing new file!!",
   };
 
-  let error = "open";
+  let error = Errors.READ_ERROR;
   try {
     const fileDescriptor = await openFile(
       `${baseDir}/${dir}/${file}.json`,
-      "wx"
+      FileSystemFlags.WRITE_NEW_FILE
     );
     const stringData = JSON.stringify(data);
-    error = "write";
+    error = Errors.WRITE_ERROR;
     await writeFile(fileDescriptor, stringData);
     return data as T;
-  } catch (e) {
+  } catch (_) {
     throw {
       code: Errors.WRITE_ERROR,
-      message: getError(error),
+      message: errors[error],
     };
   }
 };
@@ -55,34 +53,33 @@ export const read = async <T>(dir: string, file: string): Promise<T> => {
 };
 
 export const update = async (dir: string, file: string, data: any) => {
-  const getError = (type: string) => {
-    return {
-      open: "Could not open the file for updating, it may not exist yet!!",
-      truncate: "Error truncating file!!",
-      write: "Error writing to existing file!!",
-      close: "Error closing the file!!",
-    }[type];
+  const errors = {
+    [Errors.READ_ERROR]:
+      "Could not open the file for updating, it may not exist yet!!",
+    [Errors.TRUNCATE_ERROR]: "Error truncating file!!",
+    [Errors.WRITE_ERROR]: "Error writing to existing file!!",
+    [Errors.CLOSE_ERROR]: "Error closing the file!!",
   };
 
-  let error = "open";
+  let error = Errors.READ_ERROR;
   try {
     // Open the file for writing
     // 'r+' - Open file for reading and writing.
     const fileDescriptor = await openFile(
       `${baseDir}/${dir}/${file}.json`,
-      "r+"
+      FileSystemFlags.READ_AND_WRITE_EXISTING_FILE
     );
     const stringData = JSON.stringify(data);
-    error = "truncate";
+    error = Errors.TRUNCATE_ERROR;
     await truncateFile(fileDescriptor as any);
-    error = "write";
+    error = Errors.WRITE_ERROR;
     await writeFile(fileDescriptor, stringData);
-    error = "close";
+    error = Errors.CLOSE_ERROR;
     await closeFile(fileDescriptor);
-  } catch (e) {
+  } catch (_) {
     throw {
       code: Errors.UPDATE_ERROR,
-      message: getError(error),
+      message: errors[error],
     };
   }
 };
@@ -91,7 +88,7 @@ export const remove = async (dir: string, file: string) => {
   try {
     // Unlink the file
     await unlinkFile(`${baseDir}/${dir}/${file}.json`);
-  } catch (e) {
+  } catch (_) {
     throw {
       code: Errors.DELETE_ERROR,
       message: "Error deleting file!!",
@@ -106,7 +103,7 @@ export const list = async (dir: string) => {
       return data.map((fileName) => fileName.replace(".json", ""));
     }
     return [];
-  } catch (e) {
+  } catch (_) {
     throw {
       code: Errors.LS_ERROR,
       message: "Error listing files in directory!!",

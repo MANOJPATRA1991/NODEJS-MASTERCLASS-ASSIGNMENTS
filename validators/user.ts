@@ -1,14 +1,16 @@
 import { hash } from "../lib/helpers";
 import { IUser } from "../types";
 
+type T = Parameters<typeof withUserValidator>[0];
+
 export const withUserValidator = ({
-  user = {},
+  data = {},
   errors = {},
 }: {
-  user?: Partial<IUser>;
+  data?: Partial<IUser>;
   errors?: Partial<Record<keyof IUser, string>>;
 }) => {
-  return new Proxy(user, {
+  return new Proxy(data, {
     set: (obj, prop: keyof IUser, value: any) => {
       const error = errors[prop] ? new Error(errors[prop]) : null;
       switch (prop) {

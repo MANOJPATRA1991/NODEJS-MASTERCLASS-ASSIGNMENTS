@@ -5,23 +5,21 @@ import { Errors, IError, IRequest, IResult, IToken, IUser } from "../types";
 import { createRandomString } from "../lib/helpers";
 import { withTokenValidator } from "../validators/token";
 
-const handler: any = {};
-
-handler.post = (
+const post = (
   { payload }: IRequest<Pick<IUser, "password" | "phone">>,
-  callback: (result: IResult<IToken>) => void
+  next: (result: IResult<IToken>) => void
 ) => {
   const validator = withUserValidator({
     errors: {
-      phone: "Missing required field: [phone]",
-      password: "Missing required field: [password]",
+      phone: "[phone]: required field",
+      password: "[password]: required field",
     },
   });
   try {
     validator.password = payload.password;
     validator.phone = payload.phone;
   } catch (e) {
-    callback({
+    next({
       statusCode: constants.HTTP_STATUS_BAD_REQUEST,
       error: (e as Error).message,
     });
@@ -46,7 +44,7 @@ handler.post = (
       }
     })
     .then((data) =>
-      callback({
+      next({
         statusCode: constants.HTTP_STATUS_OK,
         data,
       })
@@ -54,19 +52,19 @@ handler.post = (
     .catch((e: IError) => {
       switch (e.code) {
         case Errors.WRITE_ERROR:
-          callback({
+          next({
             statusCode: constants.HTTP_STATUS_INTERNAL_SERVER_ERROR,
             error: "Could not create the new token",
           });
           break;
         case Errors.READ_ERROR:
-          callback({
+          next({
             statusCode: constants.HTTP_STATUS_BAD_REQUEST,
             error: "Could not find the specified user.",
           });
           break;
         case Errors.PASSWORD_MISMATCH_ERROR:
-          callback({
+          next({
             statusCode: constants.HTTP_STATUS_BAD_REQUEST,
             error:
               "Password did not match the specified user's stored password",
@@ -75,16 +73,16 @@ handler.post = (
     });
 };
 
-handler.get = (
+const get = (
   { query }: IRequest<IUser, { id: string }>,
-  callback: (result: IResult<IToken>) => void
+  next: (result: IResult<IToken>) => void
 ) => {
   const validator = withTokenValidator({});
 
   try {
     validator.id = query.id;
   } catch (e) {
-    callback({
+    next({
       statusCode: constants.HTTP_STATUS_BAD_REQUEST,
       error: (e as Error).message,
     });
@@ -93,21 +91,21 @@ handler.get = (
 
   db.read<IToken>("tokens", validator.id)
     .then((token) => {
-      callback({
+      next({
         statusCode: constants.HTTP_STATUS_OK,
         data: token,
       });
     })
     .catch((e) => {
-      callback({
+      next({
         statusCode: constants.HTTP_STATUS_BAD_REQUEST,
       });
     });
 };
 
-handler.put = (
+const put = (
   { query }: IRequest<IUser, { id: string; extend?: boolean }>,
-  callback: (result: IResult) => void
+  next: (result: IResult) => void
 ) => {
   const validator = withTokenValidator({});
 
@@ -115,7 +113,7 @@ handler.put = (
     validator.id = query.id;
     validator.extend = query.extend;
   } catch (e) {
-    callback({
+    next({
       statusCode: constants.HTTP_STATUS_BAD_REQUEST,
       error: (e as Error).message,
     });
@@ -134,26 +132,26 @@ handler.put = (
       }
     })
     .then(() => {
-      callback({
+      next({
         statusCode: constants.HTTP_STATUS_OK,
       });
     })
     .catch((e) => {
       switch (e.code) {
         case Errors.UPDATE_ERROR:
-          callback({
+          next({
             statusCode: constants.HTTP_STATUS_INTERNAL_SERVER_ERROR,
             error: "Could not update the token's expiration.",
           });
           break;
         case Errors.READ_ERROR:
-          callback({
+          next({
             statusCode: constants.HTTP_STATUS_BAD_REQUEST,
             error: "Could not find the specified token.",
           });
           break;
         case Errors.TOKEN_EXPIRED_ERROR:
-          callback({
+          next({
             statusCode: constants.HTTP_STATUS_BAD_REQUEST,
             error: "The token has already expired, and cannot be extended.",
           });
@@ -161,16 +159,16 @@ handler.put = (
     });
 };
 
-handler.delete = (
+const remove = (
   { query }: IRequest<IUser, { id: string }>,
-  callback: (result: IResult) => void
+  next: (result: IResult) => void
 ) => {
   const validator = withTokenValidator({});
 
   try {
     validator.id = query.id;
   } catch (e) {
-    callback({
+    next({
       statusCode: constants.HTTP_STATUS_BAD_REQUEST,
       error: (e as Error).message,
     });
@@ -182,20 +180,20 @@ handler.delete = (
       return db.remove("tokens", data.id);
     })
     .then(() => {
-      callback({
+      next({
         statusCode: constants.HTTP_STATUS_OK,
       });
     })
     .catch((e) => {
       switch (e.code) {
         case Errors.DELETE_ERROR:
-          callback({
+          next({
             statusCode: constants.HTTP_STATUS_INTERNAL_SERVER_ERROR,
             error: "Could not delete the specified token",
           });
           break;
         case Errors.READ_ERROR:
-          callback({
+          next({
             statusCode: constants.HTTP_STATUS_BAD_REQUEST,
             error: "Could not find the specified token.",
           });
@@ -221,12 +219,19 @@ export const verifyToken = (id: string, phone: string) => {
     });
 };
 
-export const tokens = (data: any, callback: (result: IResult) => void) => {
+const handler = {
+  get,
+  post,
+  put,
+  delete: remove,
+};
+
+export const tokens = (data: any, next: (result: IResult) => void) => {
   const method = data.method.toLowerCase();
   if (data.method && handler[method]) {
-    handler[method](data, callback);
+    handler[method](data, next);
   } else {
-    callback({
+    next({
       statusCode: constants.HTTP_STATUS_METHOD_NOT_ALLOWED,
     });
   }

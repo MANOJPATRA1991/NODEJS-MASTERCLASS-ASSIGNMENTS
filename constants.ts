@@ -46,5 +46,3 @@ export const statusCodes = {
   ACCEPTED: 202,
   NON_AUTHORATIVE_INFORMATION: 203,
 };
-
-// export const
