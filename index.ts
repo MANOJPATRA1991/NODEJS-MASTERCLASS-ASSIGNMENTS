@@ -4,7 +4,7 @@
  */
 
 // Dependencies
-import { worker } from "./lib/workers";
+import { worker } from "./workers";
 import { init } from "./server";
 
 init();

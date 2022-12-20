@@ -1,12 +1,12 @@
 import urllib from "url";
 import http from "http";
 import https from "https";
-import * as db from "./data";
-import * as logLib from "./logs";
-import { ICheck, IError, IResult, ProcessState } from "../types";
-import { withCheckValidator } from "../validators/check";
-import { sendSMS } from "./twilio";
-import { logger } from "./logger";
+import * as db from "./lib/data";
+import * as logLib from "./lib/logs";
+import { ICheck, IError, IResult, ProcessState } from "./types";
+import { withCheckValidator } from "./validators/check";
+import { sendSMS } from "./lib/twilio";
+import { logger } from "./lib/logger";
 
 const debugOptions = {
   debugMode: true,
