@@ -1,10 +1,12 @@
+import util from "util";
+
 enum Levels {
-  SUCCESS = "SUCCESS", 
-  DEBUG = "DEBUG", 
-  INFO = "INFO", 
-  WARN = "WARN", 
-  ERROR = "ERROR", 
-  DISABLE = "DISABLE"
+  SUCCESS = "SUCCESS",
+  DEBUG = "DEBUG",
+  INFO = "INFO",
+  WARN = "WARN",
+  ERROR = "ERROR",
+  DISABLE = "DISABLE",
 }
 
 enum Config {
@@ -45,7 +47,8 @@ interface Logger {
   config: (config: keyof typeof Config) => Logger;
   level: (level: keyof typeof Levels) => Logger;
   log: (message: string) => Logger;
-  display: () => void;
+  display: (debugOptions?: { debugMode?: boolean; section?: string; }) => void;
+  space: () => Logger;
 }
 
 function Logger() {
@@ -57,32 +60,43 @@ function Logger() {
 Logger.prototype.color = function (color: keyof typeof Color) {
   this._color += Color[color];
   return this;
-}
+};
 
 Logger.prototype.bgColor = function (bgColor: keyof typeof BgColor) {
   this._color += BgColor[bgColor];
   return this;
-}
+};
 
 Logger.prototype.config = function (config: keyof typeof Config) {
   this._color += Config[config];
   return this;
-}
+};
 
 Logger.prototype.level = function (level: keyof typeof Levels) {
   this._color = `%s ${this._color}`;
-  this._level = `${(new Date()).toLocaleDateString()} [${Levels[level]}]:`;
+  this._level = `${new Date().toLocaleDateString()} [${Levels[level]}]:`;
   return this;
-}
+};
 
 Logger.prototype.log = function (message: string) {
   this._color += "%s";
   this._messages.push(message);
   return this;
-}
+};
 
-Logger.prototype.display = function () {
-  console.log(this._color, ...[this._level, ...this._messages]);
-}
+Logger.prototype.display = function ({
+  debugMode = false,
+  section = "",
+} = {}) {
+  const debug = util.debuglog(section);
+  const log = debugMode ? debug : console.log;
+  log(
+    this._color,
+    ...[...(this._level ? [this._level] : []), ...this._messages]
+  );
+  this._level = "";
+  this._color = "";
+  this._messages = [];
+};
 
 export const logger: Logger = new Logger();
