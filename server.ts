@@ -9,6 +9,12 @@ import { httpsServerOptions } from "./constants";
 
 import { Response, Request, IResult } from "./types";
 import { parseJsonToObject } from "./lib/helpers";
+import { logger } from "./lib/logger";
+
+const debugOptions = {
+  debugMode: true,
+  section: "server",
+};
 
 const createResponse = (
   res: Response,
@@ -27,6 +33,11 @@ const requestListener = (req: Request, res: Response) => {
   if (!url || !method) {
     router.notFound(null, ({ statusCode }: IResult) => {
       createResponse(res, `Not found`, statusCode);
+      logger
+        .color("red")
+        .log(`${method}/${path} ${statusCode}`)
+        .config("reset")
+        .display(debugOptions);
     });
     return;
   }
@@ -62,6 +73,11 @@ const requestListener = (req: Request, res: Response) => {
         data ? JSON.stringify(data) : error || "",
         statusCode
       );
+      logger
+        .color(statusCode === 200 ? "green" : "red")
+        .log(`${method}/${path} ${statusCode}`)
+        .config("reset")
+        .display(debugOptions);
     });
   });
 };
@@ -75,11 +91,19 @@ export const init = () => {
 
   // Start the HTTP server
   httpServer.listen(config.httpPort, () => {
-    console.log(`The HTTP server is running on ${config.httpPort}`);
+    logger
+      .color("blue")
+      .log(`The HTTP server is running on ${config.httpPort}`)
+      .config("reset")
+      .display();
   });
 
   // Start the HTTPS server
   httpsServer.listen(config.httpsPort, () => {
-    console.log(`The HTTPS server is running on ${config.httpsPort}`);
+    logger
+      .color("red")
+      .log(`The HTTPS server is running on ${config.httpsPort}`)
+      .config("reset")
+      .display();
   });
 };

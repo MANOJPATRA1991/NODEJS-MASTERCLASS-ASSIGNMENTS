@@ -6,12 +6,18 @@ import * as logLib from "./logs";
 import { ICheck, IError, IResult, ProcessState } from "../types";
 import { withCheckValidator } from "../validators/check";
 import { sendSMS } from "./twilio";
+import { logger } from "./logger";
+
+const debugOptions = {
+  debugMode: true,
+  section: "workers",
+};
 
 const alertUserToStatusChange = (check: ICheck) => {
   const message = `Your check for ${check.method} ${check.protocol}://${check.url} is currently ${check.state}`;
   sendSMS(check.userPhone, message)
-    .then(() => console.log("Success! User is alerted"))
-    .catch(() => console.log("Couldn't send user alert!"));
+    .then(() => logger.log("Success! User is alerted").display(debugOptions))
+    .catch(() => logger.log("Couldn't send user alert!").display(debugOptions));
 };
 
 const processCheckOutcome = (check: ICheck, checkOutcome: IResult) => {
@@ -38,19 +44,23 @@ const processCheckOutcome = (check: ICheck, checkOutcome: IResult) => {
         time: Date.now(),
       })
     )
-    .then(() => console.log("Logging to file succeeded"))
-    .catch(() => console.log("Logging to file failed"));
+    .then(() => logger.log("Logging to file succeeded").display(debugOptions))
+    .catch(() => logger.log("Logging to file failed").display(debugOptions));
 
   db.update("checks", check.id, check)
     .then(() => {
       if (alert) {
         alertUserToStatusChange(check);
       } else {
-        console.log("Check outcome has not changed, no alert needed");
+        logger
+          .log("Check outcome has not changed, no alert needed")
+          .display(debugOptions);
       }
     })
     .catch(() => {
-      console.log("Error trying to save updates to one of the checks");
+      logger
+        .log("Error trying to save updates to one of the checks")
+        .display(debugOptions);
     });
 };
 
@@ -103,7 +113,9 @@ function validateCheckData(check: ICheck) {
 
     performCheck(check);
   } catch (e) {
-    console.log("One of the checks is not properly formatted. Skipping it.");
+    logger
+      .log("One of the checks is not properly formatted. Skipping it.")
+      .display(debugOptions);
   }
 }
 
@@ -121,14 +133,16 @@ function gatherAllChecks() {
     .then((results) => {
       results.forEach((result) => {
         if (result.status === "rejected") {
-          console.log("Error reading one of the check's data");
+          logger
+            .log("Error reading one of the check's data")
+            .display(debugOptions);
         } else {
           validateCheckData(result.value);
         }
       });
     })
     .catch((e) => {
-      console.log(e);
+      logger.log(e).display(debugOptions);
     });
 }
 
@@ -151,7 +165,7 @@ function rotateLogs() {
           return logLib.compress(logId, newFileId);
         });
       } else {
-        console.log("Could not find any logs to rotate");
+        logger.log("Could not find any logs to rotate").display(debugOptions);
       }
       return Promise.allSettled(promises);
     })
@@ -159,7 +173,9 @@ function rotateLogs() {
       const promises: Promise<{ logId: string }>[] = [];
       results.forEach((result) => {
         if (result.status === "rejected") {
-          console.log("Error compressing one of the log files", result.reason);
+          logger
+            .log(`Error compressing one of the log files ${result.reason}`)
+            .display(debugOptions);
         } else {
           promises.push(logLib.truncate(result.value.logId));
         }
@@ -169,14 +185,14 @@ function rotateLogs() {
     .then((results: PromiseSettledResult<any>[]) => {
       results.forEach((result) => {
         if (result.status === "rejected") {
-          console.log("Error truncating logfile");
+          logger.log("Error truncating logfile").display(debugOptions);
         } else {
-          console.log("Success truncating logfile");
+          logger.log("Success truncating logfile").display(debugOptions);
         }
       });
     })
     .catch((e: IError) => {
-      console.log(e.message);
+      logger.log(e.message!).display(debugOptions);
     });
 }
 
@@ -187,6 +203,13 @@ function rotateLogsLoop() {
 }
 
 export const worker = () => {
+  logger
+    .color("yellow")
+    .log("Background workers are running")
+    .config("reset")
+    .level("SUCCESS")
+    .display();
+
   gatherAllChecks();
 
   loop();
